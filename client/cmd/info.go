@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/grpclog"
+	"log"
 )
 
 // infoCmd represents the info command
@@ -27,6 +28,10 @@ var infoCmd = &cobra.Command{
 		}
 
 		client := directoryInfo.NewInfoDirectoryClient(conn)
+
+		if len(args) == 0 {
+			log.Fatal(errors.New("You need to specify the path to the file"))
+		}
 
 		response, err := client.InfoDir(context.Background(), &directoryInfo.PathRequest{Path: args[0]})
 		if err != nil {
