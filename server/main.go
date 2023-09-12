@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	pb "github.com/MeibisuX673/grpc/proto/infoDirectory"
+	pb "github.com/MeibisuX673/grpc/server/proto/infoDirectory"
 	"github.com/MeibisuX673/grpc/server/services/directoryInfo"
 	"google.golang.org/grpc"
 	"log"
@@ -15,6 +15,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
+
 	var opts []grpc.ServerOption
 
 	grpcServer := grpc.NewServer(opts...)

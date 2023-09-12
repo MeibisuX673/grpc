@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/grpclog"
-	"log"
 )
 
 // infoCmd represents the info command
@@ -38,18 +38,21 @@ func printDirInfo(info *directoryInfo.DirInfoResponse) {
 	fmt.Println(fmt.Sprintf("sizeAll %d\n", size))
 	fmt.Println("directories:")
 	for _, dir := range directories {
-		fmt.Println(fmt.Sprintf("name: %s, size: %d", dir.Name, dir.Size))
+		fmt.Println(fmt.Sprintf("name: %s, size (byte): %d", dir.Name, dir.Size))
 	}
 	fmt.Println()
 	fmt.Println("files:")
 	for _, file := range files {
-		fmt.Println(fmt.Sprintf("name: %s, size: %d", file.Name, file.Size))
+		fmt.Println(fmt.Sprintf("name: %s, size (byte): %d", file.Name, file.Size))
 	}
 
 }
 
 func getDirInfo(path string) (*directoryInfo.DirInfoResponse, error) {
-	opts := []grpc.DialOption{}
+
+	var opts = []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	}
 	conn, err := grpc.Dial("127.0.0.1:5300", opts...)
 
 	if err != nil {
@@ -62,7 +65,7 @@ func getDirInfo(path string) (*directoryInfo.DirInfoResponse, error) {
 
 	response, err := client.InfoDir(context.Background(), &directoryInfo.PathRequest{Path: path})
 	if err != nil {
-		log.Fatal(err)
+		grpclog.Fatalf("fail to response: %v", err)
 	}
 
 	//log.Fatal(response)

@@ -2,7 +2,7 @@ package directoryInfo
 
 import (
 	"context"
-	"github.com/MeibisuX673/grpc/proto/infoDirectory"
+	infoDirectory "github.com/MeibisuX673/grpc/server/proto/infoDirectory"
 	"os"
 	"sync"
 )
