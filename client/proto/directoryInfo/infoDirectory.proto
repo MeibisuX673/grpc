@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+option go_package = "dir/proto/directoryInfo";
+
+service InfoDirectory{
+  rpc InfoDir (PathRequest) returns (DirInfoResponse){}
+}
+
+message FileInfo {
+  string name = 1;
+  int64 size = 2;
+}
+
+message DirInfoResponse{
+  int64 size = 3;
+  repeated FileInfo files = 4;
+  repeated DirInfo directories = 5;
+}
+
+message DirInfo {
+  string name = 6;
+  int64 size = 7;
+}
+
+message PathRequest {
+  string path = 3;
+}
