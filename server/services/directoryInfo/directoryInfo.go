@@ -2,6 +2,7 @@ package directoryInfo
 
 import (
 	"context"
+	"fmt"
 	infoDirectory "github.com/MeibisuX673/grpc/server/proto/infoDirectory"
 	"os"
 	"sync"
@@ -23,14 +24,18 @@ func (d *DirectoryInfo) InfoDir(ctx context.Context, request *infoDirectory.Path
 		cache = make(map[string]*infoDirectory.DirInfoResponse)
 	}
 
-	value, ok := cache[request.Path]
-	if ok {
-		return value, nil
-	}
-
 	dirs, err := os.ReadDir(request.Path)
 	if err != nil {
 		return nil, err
+	}
+
+	value, ok := cache[request.Path]
+	if ok {
+		if len(dirs) == len(value.Files)+len(value.Directories) {
+			return value, nil
+		} else {
+			cache[request.Path] = nil
+		}
 	}
 
 	var files []*infoDirectory.FileInfo
@@ -66,6 +71,7 @@ func (d *DirectoryInfo) InfoDir(ctx context.Context, request *infoDirectory.Path
 	response.Files = files
 
 	cache[request.Path] = &response
+	fmt.Println(cache)
 
 	return &response, err
 }
