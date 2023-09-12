@@ -6,6 +6,7 @@ package cmd
 import (
 	"context"
 	"dir/proto/directoryInfo"
+	"errors"
 	"fmt"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -19,14 +20,42 @@ var infoCmd = &cobra.Command{
 	Short: "directory info",
 	Long:  `directory info`,
 	Run: func(cmd *cobra.Command, args []string) {
-		dirInfo, err := getDirInfo(args[0])
+
+		conn, err := getConnection(cmd)
 		if err != nil {
-			cmd.Println(err)
+			grpclog.Fatalf("fail to dial: %v", err)
 		}
 
-		printDirInfo(dirInfo)
+		client := directoryInfo.NewInfoDirectoryClient(conn)
+
+		response, err := client.InfoDir(context.Background(), &directoryInfo.PathRequest{Path: args[0]})
+		if err != nil {
+			grpclog.Fatalf("fail to dial: %v", err)
+		}
+
+		printDirInfo(response)
 
 	},
+}
+
+func getConnection(cmd *cobra.Command) (*grpc.ClientConn, error) {
+	var opts = []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	}
+	url, err := cmd.Flags().GetString("conn")
+	if err != nil {
+		return nil, err
+	}
+
+	if url == "" {
+		return nil, errors.New("conn cannot be empty")
+	}
+	conn, err := grpc.Dial(url, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
+
 }
 
 func printDirInfo(info *directoryInfo.DirInfoResponse) {
@@ -48,35 +77,9 @@ func printDirInfo(info *directoryInfo.DirInfoResponse) {
 
 }
 
-func getDirInfo(path string) (*directoryInfo.DirInfoResponse, error) {
-
-	var opts = []grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	}
-	conn, err := grpc.Dial("127.0.0.1:5300", opts...)
-
-	if err != nil {
-		grpclog.Fatalf("fail to dial: %v", err)
-	}
-
-	defer conn.Close()
-
-	client := directoryInfo.NewInfoDirectoryClient(conn)
-
-	response, err := client.InfoDir(context.Background(), &directoryInfo.PathRequest{Path: path})
-	if err != nil {
-		grpclog.Fatalf("fail to response: %v", err)
-	}
-
-	//log.Fatal(response)
-
-	return response, nil
-
-}
-
 func init() {
 	rootCmd.AddCommand(infoCmd)
-
+	infoCmd.Flags().String("conn", "127.0.0.1:5300", "connection grpc server")
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command

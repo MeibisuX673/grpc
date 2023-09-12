@@ -2,7 +2,6 @@ package directoryInfo
 
 import (
 	"context"
-	"fmt"
 	infoDirectory "github.com/MeibisuX673/grpc/server/proto/infoDirectory"
 	"os"
 	"sync"
@@ -71,7 +70,6 @@ func (d *DirectoryInfo) InfoDir(ctx context.Context, request *infoDirectory.Path
 	response.Files = files
 
 	cache[request.Path] = &response
-	fmt.Println(cache)
 
 	return &response, err
 }
