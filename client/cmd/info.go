@@ -7,12 +7,8 @@ import (
 	"context"
 	"dir/proto/directoryInfo"
 	"errors"
-	"fmt"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/grpclog"
-	"log"
 )
 
 // infoCmd represents the info command
@@ -22,18 +18,20 @@ var infoCmd = &cobra.Command{
 	Long:  `directory info`,
 	Run: func(cmd *cobra.Command, args []string) {
 
+		path := args[0]
 		conn, err := getConnection(cmd)
 		if err != nil {
 			grpclog.Fatalf("fail to dial: %v", err)
 		}
+		defer conn.Close()
 
 		client := directoryInfo.NewInfoDirectoryClient(conn)
 
 		if len(args) == 0 {
-			log.Fatal(errors.New("You need to specify the path to the file"))
+			cmd.PrintErr(errors.New("You need to specify the path to the file"))
 		}
 
-		response, err := client.InfoDir(context.Background(), &directoryInfo.PathRequest{Path: args[0]})
+		response, err := client.InfoDir(context.Background(), &directoryInfo.PathRequest{Path: path})
 		if err != nil {
 			grpclog.Fatalf("fail to dial: %v", err)
 		}
@@ -41,45 +39,6 @@ var infoCmd = &cobra.Command{
 		printDirInfo(response)
 
 	},
-}
-
-func getConnection(cmd *cobra.Command) (*grpc.ClientConn, error) {
-	var opts = []grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	}
-	url, err := cmd.Flags().GetString("conn")
-	if err != nil {
-		return nil, err
-	}
-
-	if url == "" {
-		return nil, errors.New("conn cannot be empty")
-	}
-	conn, err := grpc.Dial(url, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return conn, nil
-
-}
-
-func printDirInfo(info *directoryInfo.DirInfoResponse) {
-
-	files := info.Files
-	size := info.Size
-	directories := info.Directories
-
-	fmt.Println(fmt.Sprintf("sizeAll %d\n", size))
-	fmt.Println("directories:")
-	for _, dir := range directories {
-		fmt.Println(fmt.Sprintf("name: %s, size (byte): %d", dir.Name, dir.Size))
-	}
-	fmt.Println()
-	fmt.Println("files:")
-	for _, file := range files {
-		fmt.Println(fmt.Sprintf("name: %s, size (byte): %d", file.Name, file.Size))
-	}
-
 }
 
 func init() {

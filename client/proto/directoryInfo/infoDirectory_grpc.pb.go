@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type InfoDirectoryClient interface {
 	InfoDir(ctx context.Context, in *PathRequest, opts ...grpc.CallOption) (*DirInfoResponse, error)
+	InfoDirStreamClient(ctx context.Context, opts ...grpc.CallOption) (InfoDirectory_InfoDirStreamClientClient, error)
 }
 
 type infoDirectoryClient struct {
@@ -42,11 +43,46 @@ func (c *infoDirectoryClient) InfoDir(ctx context.Context, in *PathRequest, opts
 	return out, nil
 }
 
+func (c *infoDirectoryClient) InfoDirStreamClient(ctx context.Context, opts ...grpc.CallOption) (InfoDirectory_InfoDirStreamClientClient, error) {
+	stream, err := c.cc.NewStream(ctx, &InfoDirectory_ServiceDesc.Streams[0], "/InfoDirectory/InfoDirStreamClient", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &infoDirectoryInfoDirStreamClientClient{stream}
+	return x, nil
+}
+
+type InfoDirectory_InfoDirStreamClientClient interface {
+	Send(*PathRequest) error
+	CloseAndRecv() (*DirInfoStreamClientResponse, error)
+	grpc.ClientStream
+}
+
+type infoDirectoryInfoDirStreamClientClient struct {
+	grpc.ClientStream
+}
+
+func (x *infoDirectoryInfoDirStreamClientClient) Send(m *PathRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *infoDirectoryInfoDirStreamClientClient) CloseAndRecv() (*DirInfoStreamClientResponse, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(DirInfoStreamClientResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // InfoDirectoryServer is the server API for InfoDirectory service.
 // All implementations must embed UnimplementedInfoDirectoryServer
 // for forward compatibility
 type InfoDirectoryServer interface {
 	InfoDir(context.Context, *PathRequest) (*DirInfoResponse, error)
+	InfoDirStreamClient(InfoDirectory_InfoDirStreamClientServer) error
 	mustEmbedUnimplementedInfoDirectoryServer()
 }
 
@@ -56,6 +92,9 @@ type UnimplementedInfoDirectoryServer struct {
 
 func (UnimplementedInfoDirectoryServer) InfoDir(context.Context, *PathRequest) (*DirInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method InfoDir not implemented")
+}
+func (UnimplementedInfoDirectoryServer) InfoDirStreamClient(InfoDirectory_InfoDirStreamClientServer) error {
+	return status.Errorf(codes.Unimplemented, "method InfoDirStreamClient not implemented")
 }
 func (UnimplementedInfoDirectoryServer) mustEmbedUnimplementedInfoDirectoryServer() {}
 
@@ -88,6 +127,32 @@ func _InfoDirectory_InfoDir_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _InfoDirectory_InfoDirStreamClient_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(InfoDirectoryServer).InfoDirStreamClient(&infoDirectoryInfoDirStreamClientServer{stream})
+}
+
+type InfoDirectory_InfoDirStreamClientServer interface {
+	SendAndClose(*DirInfoStreamClientResponse) error
+	Recv() (*PathRequest, error)
+	grpc.ServerStream
+}
+
+type infoDirectoryInfoDirStreamClientServer struct {
+	grpc.ServerStream
+}
+
+func (x *infoDirectoryInfoDirStreamClientServer) SendAndClose(m *DirInfoStreamClientResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *infoDirectoryInfoDirStreamClientServer) Recv() (*PathRequest, error) {
+	m := new(PathRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // InfoDirectory_ServiceDesc is the grpc.ServiceDesc for InfoDirectory service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -100,6 +165,12 @@ var InfoDirectory_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _InfoDirectory_InfoDir_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "InfoDirStreamClient",
+			Handler:       _InfoDirectory_InfoDirStreamClient_Handler,
+			ClientStreams: true,
+		},
+	},
 	Metadata: "client/proto/directoryInfo/infoDirectory.proto",
 }

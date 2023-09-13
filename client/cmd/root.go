@@ -4,10 +4,16 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"os"
-
+	"dir/proto/directoryInfo"
+	"errors"
+	"fmt"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"os"
 )
+
+const DEFAULT_CONNECTION = "127.0.0.1:5300"
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -27,6 +33,49 @@ to quickly create a Cobra application.`,
 	//PreRun: func(cmd *cobra.Command, args []string) {
 	//	fmt.Printf("Inside rootCmd PreRun with args: %v\n", args)
 	//},
+}
+
+func printDirInfo(info *directoryInfo.DirInfoResponse) {
+
+	files := info.Files
+	size := info.Size
+	directories := info.Directories
+
+	fmt.Println(fmt.Sprintf("%s size (byte): %d\n", info.GetPath(), size))
+	fmt.Println("directories:")
+	for _, dir := range directories {
+		fmt.Println(fmt.Sprintf("name: %s, size (byte): %d", dir.Name, dir.Size))
+	}
+	fmt.Println()
+	fmt.Println("files:")
+	for _, file := range files {
+		fmt.Println(fmt.Sprintf("name: %s, size (byte): %d", file.Name, file.Size))
+	}
+	fmt.Println()
+
+}
+
+func getConnection(cmd *cobra.Command) (*grpc.ClientConn, error) {
+
+	var opts = []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	}
+
+	url, err := cmd.Flags().GetString("conn")
+	if err != nil {
+		url = DEFAULT_CONNECTION
+	}
+	if url == "" {
+		return nil, errors.New("conn cannot be empty")
+	}
+
+	conn, err := grpc.Dial(url, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return conn, nil
+
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
