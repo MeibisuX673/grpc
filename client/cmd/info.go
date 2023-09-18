@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/grpclog"
 	"os"
+	"time"
 )
 
 // infoCmd represents the info command
@@ -97,18 +98,18 @@ func infoInternalMode(client directoryInfo.InfoDirectoryClient) {
 	}
 
 	closed := make(chan bool)
+	console := make(chan string)
 
-	consol := make(chan string)
-	go func() {
-		var path string
-		fmt.Scan(os.Stdin, &path)
-		if path != "" {
-			consol <- path
-		} else {
-			fmt.Println("tut")
-			closed <- true
-		}
-	}()
+	//go func() {
+	//	var path string
+	//	fmt.Scan(os.Stdin, &path)
+	//	if path != "" {
+	//		consol <- path
+	//	} else {
+	//		fmt.Println("tut")
+	//		closed <- true
+	//	}
+	//}()
 	read := make(chan *directoryInfo.DirInfoResponse)
 	go func() {
 		for {
@@ -117,14 +118,30 @@ func infoInternalMode(client directoryInfo.InfoDirectoryClient) {
 		}
 	}()
 
-	select {
-	case path := <-consol:
-		stream.Send(&directoryInfo.PathRequest{Path: path})
-	case response := <-read:
-		fmt.Println(response)
-	case <-closed:
-		stream.CloseSend()
-		return
+	go func() {
+		var path string
+
+		for {
+			fmt.Scan(os.Stdin, &path)
+			if path != "" {
+				console <- path
+			}
+			time.Sleep(time.Second)
+		}
+
+	}()
+
+	var path string
+	for {
+		select {
+		case response := <-read:
+			fmt.Println(response)
+		case <-closed:
+			stream.CloseSend()
+			return
+		case path = <-console:
+			stream.Send(&directoryInfo.PathRequest{Path: path})
+		}
 	}
 
 }
