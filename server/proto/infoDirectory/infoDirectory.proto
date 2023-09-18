@@ -5,6 +5,7 @@ option go_package = "github.com/MeibisuX673/grpc/server/proto/infoDirectory";
 service InfoDirectory{
   rpc InfoDir (PathRequest) returns (DirInfoResponse){}
   rpc InfoDirStreamClient (stream PathRequest) returns(DirInfoStreamClientResponse){}
+  rpc InfoDirStreamAll (stream PathRequest) returns(stream DirInfoResponse){}
 }
 
 message FileInfo {

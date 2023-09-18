@@ -6,9 +6,10 @@ package cmd
 import (
 	"context"
 	"dir/proto/directoryInfo"
-	"errors"
+	"fmt"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/grpclog"
+	"os"
 )
 
 // infoCmd represents the info command
@@ -18,7 +19,6 @@ var infoCmd = &cobra.Command{
 	Long:  `directory info`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		path := args[0]
 		conn, err := getConnection(cmd)
 		if err != nil {
 			grpclog.Fatalf("fail to dial: %v", err)
@@ -27,23 +27,112 @@ var infoCmd = &cobra.Command{
 
 		client := directoryInfo.NewInfoDirectoryClient(conn)
 
-		if len(args) == 0 {
-			cmd.PrintErr(errors.New("You need to specify the path to the file"))
+		internal, _ := cmd.Flags().GetBool("internal")
+		if internal {
+			infoInternalMode(client)
 		}
 
-		response, err := client.InfoDir(context.Background(), &directoryInfo.PathRequest{Path: path})
-		if err != nil {
-			grpclog.Fatalf("fail to dial: %v", err)
-		}
-
-		printDirInfo(response)
+		//path := args[0]
+		//
+		//if len(args) == 0 {
+		//	cmd.PrintErr(errors.New("You need to specify the path to the file"))
+		//}
+		//
+		//response, err := client.InfoDir(context.Background(), &directoryInfo.PathRequest{Path: path})
+		//if err != nil {
+		//	grpclog.Fatalf("fail to dial: %v", err)
+		//}
+		//
+		//printDirInfo(response)
 
 	},
+}
+
+//func infoInternalMode(client directoryInfo.InfoDirectoryClient) {
+//
+//	waitc := make(chan string)
+//	closed := make(chan bool)
+//	var path string
+//	//response := make(chan directoryInfo.DirInfoStreamClientResponse)
+//	//var path string
+//
+//	stream, err := client.InfoDirStreamAll(context.Background())
+//	if err != nil {
+//		grpclog.Fatalf(err.Error())
+//	}
+//
+//	go func() {
+//
+//		//	in, err := stream.Recv()
+//		//	if err == io.EOF {
+//		//		close(waitc)
+//		//		return
+//		//	}
+//		//	if err != nil {
+//		//		log.Fatalf("client.RouteChat failed: %v", err)
+//		//	}
+//		//	printDirInfo(in)
+//		//}
+//	}()
+//
+//	fmt.Scan(os.Stdin, &path)
+//	waitc <- path
+//
+//	for value := range closed {
+//		if value {
+//			stream.CloseSend()
+//		}
+//	}
+//
+//}
+
+func infoInternalMode(client directoryInfo.InfoDirectoryClient) {
+
+	//response := make(chan directoryInfo.DirInfoStreamClientResponse)
+	//var path string
+
+	stream, err := client.InfoDirStreamAll(context.Background())
+	if err != nil {
+		grpclog.Fatalf(err.Error())
+	}
+
+	closed := make(chan bool)
+
+	consol := make(chan string)
+	go func() {
+		var path string
+		fmt.Scan(os.Stdin, &path)
+		if path != "" {
+			consol <- path
+		} else {
+			fmt.Println("tut")
+			closed <- true
+		}
+	}()
+	read := make(chan *directoryInfo.DirInfoResponse)
+	go func() {
+		for {
+			in, _ := stream.Recv()
+			read <- in
+		}
+	}()
+
+	select {
+	case path := <-consol:
+		stream.Send(&directoryInfo.PathRequest{Path: path})
+	case response := <-read:
+		fmt.Println(response)
+	case <-closed:
+		stream.CloseSend()
+		return
+	}
+
 }
 
 func init() {
 	rootCmd.AddCommand(infoCmd)
 	infoCmd.Flags().String("conn", "127.0.0.1:5300", "connection grpc server")
+	infoCmd.Flags().BoolP("internal", "i", false, "internal")
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command

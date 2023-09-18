@@ -5,6 +5,7 @@ option go_package = "dir/proto/directoryInfo";
 service InfoDirectory{
   rpc InfoDir (PathRequest) returns (DirInfoResponse){}
   rpc InfoDirStreamClient (stream PathRequest) returns(DirInfoStreamClientResponse){}
+  rpc InfoDirStreamAll (stream PathRequest) returns(stream DirInfoResponse){}
 }
 
 message FileInfo {
