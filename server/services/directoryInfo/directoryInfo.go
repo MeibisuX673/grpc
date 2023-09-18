@@ -3,18 +3,51 @@ package directoryInfo
 import (
 	"context"
 	infoDirectory "github.com/MeibisuX673/grpc/server/proto/infoDirectory"
+	"io"
 	"os"
-	"sync"
 )
 
 var cache = make(map[string]*infoDirectory.DirInfoResponse)
 
 type DirectoryInfo struct {
-	mutex sync.Mutex
 	infoDirectory.UnimplementedInfoDirectoryServer
 }
 
+func (d *DirectoryInfo) InfoDirStreamClient(stream infoDirectory.InfoDirectory_InfoDirStreamClientServer) error {
+
+	var response []*infoDirectory.DirInfoResponse
+
+	for {
+		path, err := stream.Recv()
+		if err == io.EOF {
+			return stream.SendAndClose(&infoDirectory.DirInfoStreamClientResponse{
+				DirectoriesInfo: response,
+			})
+		}
+		if err != nil {
+			return err
+		}
+		dirInfo, err := getDirInfo(path)
+		if err != nil {
+			return err
+		}
+		response = append(response, dirInfo)
+	}
+
+}
+
 func (d *DirectoryInfo) InfoDir(ctx context.Context, request *infoDirectory.PathRequest) (*infoDirectory.DirInfoResponse, error) {
+
+	response, err := getDirInfo(request)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, err
+
+}
+
+func getDirInfo(pathReq *infoDirectory.PathRequest) (*infoDirectory.DirInfoResponse, error) {
 
 	var response infoDirectory.DirInfoResponse
 	var sumSize int64 = 0
@@ -23,17 +56,17 @@ func (d *DirectoryInfo) InfoDir(ctx context.Context, request *infoDirectory.Path
 		cache = make(map[string]*infoDirectory.DirInfoResponse)
 	}
 
-	dirs, err := os.ReadDir(request.Path)
+	dirs, err := os.ReadDir(pathReq.Path)
 	if err != nil {
 		return nil, err
 	}
 
-	value, ok := cache[request.Path]
+	value, ok := cache[pathReq.Path]
 	if ok {
 		if len(dirs) == len(value.Files)+len(value.Directories) {
 			return value, nil
 		} else {
-			cache[request.Path] = nil
+			cache[pathReq.Path] = nil
 		}
 	}
 
@@ -68,8 +101,10 @@ func (d *DirectoryInfo) InfoDir(ctx context.Context, request *infoDirectory.Path
 	response.Size = sumSize
 	response.Directories = directories
 	response.Files = files
+	response.Path = pathReq.GetPath()
 
-	cache[request.Path] = &response
+	cache[pathReq.Path] = &response
 
 	return &response, err
+
 }

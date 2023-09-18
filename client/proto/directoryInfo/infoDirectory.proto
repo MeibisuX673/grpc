@@ -4,6 +4,7 @@ option go_package = "dir/proto/directoryInfo";
 
 service InfoDirectory{
   rpc InfoDir (PathRequest) returns (DirInfoResponse){}
+  rpc InfoDirStreamClient (stream PathRequest) returns(DirInfoStreamClientResponse){}
 }
 
 message FileInfo {
@@ -15,6 +16,7 @@ message DirInfoResponse{
   int64 size = 3;
   repeated FileInfo files = 4;
   repeated DirInfo directories = 5;
+  string path = 2;
 }
 
 message DirInfo {
@@ -25,3 +27,8 @@ message DirInfo {
 message PathRequest {
   string path = 3;
 }
+
+message DirInfoStreamClientResponse{
+  repeated DirInfoResponse directoriesInfo = 1;
+}
+
