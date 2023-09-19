@@ -6,10 +6,10 @@ package cmd
 import (
 	"context"
 	"dir/proto/directoryInfo"
+	"errors"
 	"fmt"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/grpclog"
-	"os"
 	"time"
 )
 
@@ -31,116 +31,57 @@ var infoCmd = &cobra.Command{
 		internal, _ := cmd.Flags().GetBool("internal")
 		if internal {
 			infoInternalMode(client)
+			return
 		}
 
-		//path := args[0]
-		//
-		//if len(args) == 0 {
-		//	cmd.PrintErr(errors.New("You need to specify the path to the file"))
-		//}
-		//
-		//response, err := client.InfoDir(context.Background(), &directoryInfo.PathRequest{Path: path})
-		//if err != nil {
-		//	grpclog.Fatalf("fail to dial: %v", err)
-		//}
-		//
-		//printDirInfo(response)
+		if len(args) == 0 {
+			cmd.PrintErr(errors.New("You need to specify the path to the file\n"))
+			return
+		}
+		path := args[0]
+
+		response, err := client.InfoDir(context.Background(), &directoryInfo.PathRequest{Path: path})
+		if err != nil {
+			grpclog.Fatalf("fail to dial: %v", err)
+		}
+
+		printDirInfo(response)
 
 	},
 }
 
-//func infoInternalMode(client directoryInfo.InfoDirectoryClient) {
-//
-//	waitc := make(chan string)
-//	closed := make(chan bool)
-//	var path string
-//	//response := make(chan directoryInfo.DirInfoStreamClientResponse)
-//	//var path string
-//
-//	stream, err := client.InfoDirStreamAll(context.Background())
-//	if err != nil {
-//		grpclog.Fatalf(err.Error())
-//	}
-//
-//	go func() {
-//
-//		//	in, err := stream.Recv()
-//		//	if err == io.EOF {
-//		//		close(waitc)
-//		//		return
-//		//	}
-//		//	if err != nil {
-//		//		log.Fatalf("client.RouteChat failed: %v", err)
-//		//	}
-//		//	printDirInfo(in)
-//		//}
-//	}()
-//
-//	fmt.Scan(os.Stdin, &path)
-//	waitc <- path
-//
-//	for value := range closed {
-//		if value {
-//			stream.CloseSend()
-//		}
-//	}
-//
-//}
-
 func infoInternalMode(client directoryInfo.InfoDirectoryClient) {
 
-	//response := make(chan directoryInfo.DirInfoStreamClientResponse)
-	//var path string
+	exit := false
 
 	stream, err := client.InfoDirStreamAll(context.Background())
 	if err != nil {
 		grpclog.Fatalf(err.Error())
 	}
 
-	closed := make(chan bool)
-	console := make(chan string)
-
-	//go func() {
-	//	var path string
-	//	fmt.Scan(os.Stdin, &path)
-	//	if path != "" {
-	//		consol <- path
-	//	} else {
-	//		fmt.Println("tut")
-	//		closed <- true
-	//	}
-	//}()
-	read := make(chan *directoryInfo.DirInfoResponse)
 	go func() {
 		for {
-			in, _ := stream.Recv()
-			read <- in
-		}
-	}()
-
-	go func() {
-		var path string
-
-		for {
-			fmt.Scan(os.Stdin, &path)
-			if path != "" {
-				console <- path
+			if exit {
+				return
 			}
-			time.Sleep(time.Second)
+			in, _ := stream.Recv()
+			printDirInfo(in)
 		}
-
 	}()
 
 	var path string
+
 	for {
-		select {
-		case response := <-read:
-			fmt.Println(response)
-		case <-closed:
+		fmt.Println("input Directory")
+		fmt.Scanf("%s\n", &path)
+		if path == "exit" {
 			stream.CloseSend()
+			exit = true
 			return
-		case path = <-console:
+		}
+		if path != "" {
 			stream.Send(&directoryInfo.PathRequest{Path: path})
+			time.Sleep(time.Millisecond)
 		}
 	}
 
