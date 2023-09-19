@@ -24,6 +24,7 @@ const _ = grpc.SupportPackageIsVersion7
 type InfoDirectoryClient interface {
 	InfoDir(ctx context.Context, in *PathRequest, opts ...grpc.CallOption) (*DirInfoResponse, error)
 	InfoDirStreamClient(ctx context.Context, opts ...grpc.CallOption) (InfoDirectory_InfoDirStreamClientClient, error)
+	InfoDirStreamAll(ctx context.Context, opts ...grpc.CallOption) (InfoDirectory_InfoDirStreamAllClient, error)
 }
 
 type infoDirectoryClient struct {
@@ -77,12 +78,44 @@ func (x *infoDirectoryInfoDirStreamClientClient) CloseAndRecv() (*DirInfoStreamC
 	return m, nil
 }
 
+func (c *infoDirectoryClient) InfoDirStreamAll(ctx context.Context, opts ...grpc.CallOption) (InfoDirectory_InfoDirStreamAllClient, error) {
+	stream, err := c.cc.NewStream(ctx, &InfoDirectory_ServiceDesc.Streams[1], "/InfoDirectory/InfoDirStreamAll", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &infoDirectoryInfoDirStreamAllClient{stream}
+	return x, nil
+}
+
+type InfoDirectory_InfoDirStreamAllClient interface {
+	Send(*PathRequest) error
+	Recv() (*DirInfoResponse, error)
+	grpc.ClientStream
+}
+
+type infoDirectoryInfoDirStreamAllClient struct {
+	grpc.ClientStream
+}
+
+func (x *infoDirectoryInfoDirStreamAllClient) Send(m *PathRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *infoDirectoryInfoDirStreamAllClient) Recv() (*DirInfoResponse, error) {
+	m := new(DirInfoResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // InfoDirectoryServer is the server API for InfoDirectory service.
 // All implementations must embed UnimplementedInfoDirectoryServer
 // for forward compatibility
 type InfoDirectoryServer interface {
 	InfoDir(context.Context, *PathRequest) (*DirInfoResponse, error)
 	InfoDirStreamClient(InfoDirectory_InfoDirStreamClientServer) error
+	InfoDirStreamAll(InfoDirectory_InfoDirStreamAllServer) error
 	mustEmbedUnimplementedInfoDirectoryServer()
 }
 
@@ -95,6 +128,9 @@ func (UnimplementedInfoDirectoryServer) InfoDir(context.Context, *PathRequest) (
 }
 func (UnimplementedInfoDirectoryServer) InfoDirStreamClient(InfoDirectory_InfoDirStreamClientServer) error {
 	return status.Errorf(codes.Unimplemented, "method InfoDirStreamClient not implemented")
+}
+func (UnimplementedInfoDirectoryServer) InfoDirStreamAll(InfoDirectory_InfoDirStreamAllServer) error {
+	return status.Errorf(codes.Unimplemented, "method InfoDirStreamAll not implemented")
 }
 func (UnimplementedInfoDirectoryServer) mustEmbedUnimplementedInfoDirectoryServer() {}
 
@@ -153,6 +189,32 @@ func (x *infoDirectoryInfoDirStreamClientServer) Recv() (*PathRequest, error) {
 	return m, nil
 }
 
+func _InfoDirectory_InfoDirStreamAll_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(InfoDirectoryServer).InfoDirStreamAll(&infoDirectoryInfoDirStreamAllServer{stream})
+}
+
+type InfoDirectory_InfoDirStreamAllServer interface {
+	Send(*DirInfoResponse) error
+	Recv() (*PathRequest, error)
+	grpc.ServerStream
+}
+
+type infoDirectoryInfoDirStreamAllServer struct {
+	grpc.ServerStream
+}
+
+func (x *infoDirectoryInfoDirStreamAllServer) Send(m *DirInfoResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *infoDirectoryInfoDirStreamAllServer) Recv() (*PathRequest, error) {
+	m := new(PathRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // InfoDirectory_ServiceDesc is the grpc.ServiceDesc for InfoDirectory service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -169,6 +231,12 @@ var InfoDirectory_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "InfoDirStreamClient",
 			Handler:       _InfoDirectory_InfoDirStreamClient_Handler,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "InfoDirStreamAll",
+			Handler:       _InfoDirectory_InfoDirStreamAll_Handler,
+			ServerStreams: true,
 			ClientStreams: true,
 		},
 	},

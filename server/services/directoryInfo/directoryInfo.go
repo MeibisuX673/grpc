@@ -5,12 +5,40 @@ import (
 	infoDirectory "github.com/MeibisuX673/grpc/server/proto/infoDirectory"
 	"io"
 	"os"
+	"sync"
 )
 
 var cache = make(map[string]*infoDirectory.DirInfoResponse)
 
 type DirectoryInfo struct {
+	mu sync.Mutex // protects routeNot
 	infoDirectory.UnimplementedInfoDirectoryServer
+}
+
+func (d *DirectoryInfo) InfoDirStreamAll(stream infoDirectory.InfoDirectory_InfoDirStreamAllServer) error {
+
+	var response *infoDirectory.DirInfoResponse
+
+	for {
+		in, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+
+		infoDir, err := getDirInfo(in)
+		if err != nil {
+			return nil
+		}
+		response = infoDir
+
+		if err := stream.Send(response); err != nil {
+			return err
+		}
+	}
+
 }
 
 func (d *DirectoryInfo) InfoDirStreamClient(stream infoDirectory.InfoDirectory_InfoDirStreamClientServer) error {
