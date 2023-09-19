@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/grpclog"
+	"io"
 	"time"
 )
 
@@ -64,7 +65,13 @@ func infoInternalMode(client directoryInfo.InfoDirectoryClient) {
 			if exit {
 				return
 			}
-			in, _ := stream.Recv()
+			in, err := stream.Recv()
+			if err == io.EOF {
+				continue
+			}
+			if err != nil {
+				grpclog.Fatalf(err.Error())
+			}
 			printDirInfo(in)
 		}
 	}()
