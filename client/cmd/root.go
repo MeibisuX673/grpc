@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	crtFile = "regolit.crt"
+	crtFile = "server.crt"
 )
 
 const DEFAULT_CONNECTION = "127.0.0.1:5300"
@@ -70,7 +70,7 @@ func getConnection(cmd *cobra.Command) (*grpc.ClientConn, error) {
 		return nil, errors.New("conn cannot be empty")
 	}
 
-	creds, err := credentials.NewClientTLSFromFile(crtFile, "localhost:5300")
+	creds, err := credentials.NewClientTLSFromFile(crtFile, DEFAULT_CONNECTION)
 	if err != nil {
 		log.Fatalf("failed to load credentials: %v", err)
 	}

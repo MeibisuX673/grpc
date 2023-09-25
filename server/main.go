@@ -12,8 +12,8 @@ import (
 )
 
 var (
-	crtFile = "regolit.crt"
-	keyFile = "prime256v1-eckey.pem"
+	crtFile = "server.crt"
+	keyFile = "server.key"
 )
 
 func main() {
