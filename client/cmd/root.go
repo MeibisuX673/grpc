@@ -9,8 +9,13 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
+	"log"
 	"os"
+)
+
+var (
+	crtFile = "regolit.crt"
 )
 
 const DEFAULT_CONNECTION = "127.0.0.1:5300"
@@ -57,16 +62,20 @@ func printDirInfo(info *directoryInfo.DirInfoResponse) {
 
 func getConnection(cmd *cobra.Command) (*grpc.ClientConn, error) {
 
-	var opts = []grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	}
-
 	url, err := cmd.Flags().GetString("conn")
 	if err != nil {
 		url = DEFAULT_CONNECTION
 	}
 	if url == "" {
 		return nil, errors.New("conn cannot be empty")
+	}
+
+	creds, err := credentials.NewClientTLSFromFile(crtFile, "localhost:5300")
+	if err != nil {
+		log.Fatalf("failed to load credentials: %v", err)
+	}
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(creds),
 	}
 
 	conn, err := grpc.Dial(url, opts...)
